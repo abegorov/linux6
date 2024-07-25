@@ -41,7 +41,7 @@ ls -la /home/vagrant/files/
 # создаём том под /opt, форматируем, добавляем в fstab:
 lvcreate --size 4G --name LogVolOpt VolGroup00 "${OLD_PART}"
 sleep 1  # ждём обновления информации о томах
-mkfs.btrfs /dev/mapper/VolGroup00-LogVolOpt
+mkfs.btrfs -f /dev/mapper/VolGroup00-LogVolOpt
 
 # создаём subvolume @opt на LogVolOpt и делаем его snapshot:
 mount /dev/mapper/VolGroup00-LogVolOpt /mnt

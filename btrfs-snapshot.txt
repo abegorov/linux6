@@ -1,0 +1,3 @@
+[vagrant@lvm-abegorov ~]$ sudo btrfs subvolume list /opt
+ID 257 gen 8 top level 5 path @opt
+ID 258 gen 8 top level 5 path @opt_snapshot_2024-07-25T19:56:20+0000

@@ -56,7 +56,8 @@
 - [скрипт настройки - 2ой этап](https://github.com/abegorov/linux6/blob/main/provision2.sh);
 - [лог выполнения скрипта настройки 2ого этапа](https://github.com/abegorov/linux6/blob/main/provision2.log);
 - [вывод команды lsblk до решения](https://github.com/abegorov/linux6/blob/main/lsblk-before.txt);
-- [вывод команды lsblk после решения](https://github.com/abegorov/linux6/blob/main/lsblk-after.txt).
+- [вывод команды lsblk после решения](https://github.com/abegorov/linux6/blob/main/lsblk-after.txt);
+- [вывод команды btrfs subvolume list /opt со списком snapshot'ов](https://github.com/abegorov/linux6/blob/main/btrfs-snapshot.txt).
 
 ## Запуск
 

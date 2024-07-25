@@ -7,25 +7,17 @@ set -x  # Print commands and their arguments as they are executed.
 # удаляем этот скрипт из автозагрузки:
 rm /etc/cron.d/provision
 
-# системный диск это устройство sd[a-z], на котором находится том LogVol00
-SYS_PART=$(sudo pvs --no-headings -o pv_name,lv_name | grep LogVol00 \
+# получаем старый и новый системный раздел по имени системного тома на нём:
+OLD_PART=$(sudo pvs --no-headings -o pv_name,lv_name | grep LogVol00Old \
   | awk '{print $1}')
-TMP_PART=$(sudo pvs --no-headings -o pv_name,lv_name | grep LogVolTmpRoot \
+NEW_PART=$(sudo pvs --no-headings -o pv_name,lv_name | grep LogVol00 \
   | awk '{print $1}')
 
-# удаляем корневой раздел:
-lvremove --yes /dev/mapper/VolGroup00-LogVol00
+# удаляем старый корневой том:
+lvremove --yes /dev/mapper/VolGroup00-LogVol00Old
 
-# перемещаем том LogVolTmpRoot на другой диск
-pvmove --name LogVolTmpRoot "${TMP_PART}" "${SYS_PART}"
-
-# переименовываем LogVolTmpRoot в LogVol00
-lvrename VolGroup00 LogVolTmpRoot LogVol00
-
-# обновляем /etc/fstab и конфигурацию загрузчика
-sed 's|\bLogVolTmpRoot\b|LogVol00|g' -i /etc/fstab
-sed 's|\bLogVolTmpRoot\b|LogVol00|g' -i /etc/default/grub
-sed 's|\bLogVolTmpRoot\b|LogVol00|g' -i /boot/grub2/grub.cfg
+# перемещаем том LogVol00 на другой диск
+pvmove --name LogVol00 "${NEW_PART}" "${OLD_PART}"
 
 # генерируем файлы в /home:
 mkdir /home/vagrant/files

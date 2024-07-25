@@ -55,12 +55,12 @@ sudo lvcreate --type cache-pool --cachemode writethrough --size 1G \
   --name CachePool VolGroup00 "/dev/${ADD_DISK}1"
 
 # создаём временный том под корневую ФС:
-sudo lvcreate --size 8G --name LogVolTmpRoot VolGroup00 \
+sudo lvcreate --size 8G --name LogVol00New VolGroup00 \
   "/dev/${ADD_DISK}1"
 
 # форматируем будующие /home, /var и /
 sleep 1  # ждём обновления информации о томах
-sudo mkfs.xfs /dev/mapper/VolGroup00-LogVolTmpRoot
+sudo mkfs.xfs /dev/mapper/VolGroup00-LogVol00New
 sudo mkfs.xfs /dev/mapper/VolGroup00-LogVolHome
 sudo mkfs.ext4 /dev/mapper/VolGroupVar-LogVolVar
 
@@ -70,14 +70,14 @@ sudo lvcreate --snapshot --size 512M --name SnapVol00 \
 
 # копируем файлы из корневого раздела на созданные тома:
 sudo mkdir /mnt/SnapVol00
-sudo mkdir /mnt/LogVolTmpRoot
+sudo mkdir /mnt/LogVol00New
 sudo mkdir /mnt/home
 sudo mkdir /mnt/var
 sudo mount -o nouuid /dev/mapper/VolGroup00-SnapVol00 /mnt/SnapVol00
-sudo mount /dev/mapper/VolGroup00-LogVolTmpRoot /mnt/LogVolTmpRoot
+sudo mount /dev/mapper/VolGroup00-LogVol00New /mnt/LogVol00New
 sudo mount /dev/mapper/VolGroup00-LogVolHome /mnt/home
 sudo mount /dev/mapper/VolGroupVar-LogVolVar /mnt/var
-sudo xfsdump -J - /mnt/SnapVol00 | sudo xfsrestore -J - /mnt/LogVolTmpRoot
+sudo xfsdump -J - /mnt/SnapVol00 | sudo xfsrestore -J - /mnt/LogVol00New
 sudo cp --archive --recursive /mnt/SnapVol00/home /mnt/
 sudo cp --archive --recursive /mnt/SnapVol00/var /mnt/
 
@@ -86,44 +86,33 @@ sudo umount /mnt/SnapVol00
 sudo lvremove --yes VolGroup00/SnapVol00
 
 # удаляем файлы внутри /home и /var на новом корневом разделе:
-sudo rm --recursive /mnt/LogVolTmpRoot/home
-sudo rm --recursive /mnt/LogVolTmpRoot/var
-sudo mkdir /mnt/LogVolTmpRoot/home
-sudo mkdir /mnt/LogVolTmpRoot/var
+sudo rm --recursive /mnt/LogVol00New/home
+sudo rm --recursive /mnt/LogVol00New/var
+sudo mkdir /mnt/LogVol00New/home
+sudo mkdir /mnt/LogVol00New/var
 
 # добавляем разделы в /etc/fstab, монтируем по имени, так как
 # UUID оргинального LVM тома и его snapshot'а будет совпадать
-sudo sed 's|\bLogVol00\b|LogVolTmpRoot|g' -i /mnt/LogVolTmpRoot/etc/fstab
-echo "/dev/mapper/VolGroup00-LogVolHome /home xfs defaults 0 0" \
-  | sudo tee --append /mnt/LogVolTmpRoot/etc/fstab
-# ext4 необходимо периодически проверять, поэтому defaults 0 2
-echo "/dev/mapper/VolGroupVar-LogVolVar /var ext4 defaults 0 2" \
-  | sudo tee --append /mnt/LogVolTmpRoot/etc/fstab
+echo "/dev/mapper/VolGroup00-LogVolHome /home xfs atime 0 0" \
+  | sudo tee --append /mnt/LogVol00New/etc/fstab
+# ext4 необходимо периодически проверять, поэтому 0 2
+echo "/dev/mapper/VolGroupVar-LogVolVar /var ext4 data=journal 0 2" \
+  | sudo tee --append /mnt/LogVol00New/etc/fstab
 
-# обновляем конфигурацию загрузчика для загрузки с LogVolTmpRoot:
-sudo mount -t proc proc /mnt/LogVolTmpRoot/proc
-sudo mount -t sysfs sysfs /mnt/LogVolTmpRoot/sys
-sudo mount -t devtmpfs devtmpfs /mnt/LogVolTmpRoot/dev
-sudo umount /boot
-sudo mount "/dev/${SYS_DISK}2" /mnt/LogVolTmpRoot/boot
-sudo sed 's|\bLogVol00\b|LogVolTmpRoot|g' \
-  -i /mnt/LogVolTmpRoot/etc/default/grub
-sudo chroot /mnt/LogVolTmpRoot grub2-mkconfig -o /boot/grub2/grub.cfg
-sudo umount /mnt/LogVolTmpRoot/proc
-sudo umount /mnt/LogVolTmpRoot/sys
-sudo umount /mnt/LogVolTmpRoot/dev
-sudo umount /mnt/LogVolTmpRoot/boot
+# переименовываем LogVol00 в LogVol00Old, LogVol00New в LogVol00
+sudo lvrename VolGroup00 LogVol00 LogVol00Old
+sudo lvrename VolGroup00 LogVol00New LogVol00
 
 # добавляем скрипт, который будем запускаться после перезагрузки:
-cat <<EOF | sudo tee /mnt/LogVolTmpRoot/etc/cron.d/provision
+cat <<EOF | sudo tee /mnt/LogVol00New/etc/cron.d/provision
 SHELL=/bin/bash
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=root
 @reboot root /bin/bash /vagrant/provision2.sh > /vagrant/provision2.log 2>&1
 EOF
 
-# перезагружаемся в систему на LogVolTmpRoot:
-sudo umount /dev/mapper/VolGroup00-LogVolTmpRoot
+# перезагружаемся в систему на новом LogVol00:
+sudo umount /dev/mapper/VolGroup00-LogVol00New
 sudo umount /dev/mapper/VolGroup00-LogVolHome
 sudo umount /dev/mapper/VolGroupVar-LogVolVar
 sudo reboot

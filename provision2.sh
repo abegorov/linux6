@@ -8,10 +8,10 @@ set -x  # Print commands and their arguments as they are executed.
 rm /etc/cron.d/provision
 
 # получаем старый и новый системный раздел по имени системного тома на нём:
-OLD_PART=$(sudo pvs --no-headings -o pv_name,lv_name | grep LogVol00Old \
-  | awk '{print $1}')
-NEW_PART=$(sudo pvs --no-headings -o pv_name,lv_name | grep LogVol00 \
-  | awk '{print $1}')
+OLD_PART=$(sudo pvs --no-headings -o pv_name,lv_name \
+  | grep --word-regexp LogVol00Old | awk '{print $1}')
+NEW_PART=$(sudo pvs --no-headings -o pv_name,lv_name \
+  | grep --word-regexp LogVol00 | awk '{print $1}')
 
 # удаляем старый корневой том:
 lvremove --yes /dev/mapper/VolGroup00-LogVol00Old
@@ -39,7 +39,7 @@ mount /home
 ls -la /home/vagrant/files/
 
 # создаём том под /opt, форматируем, добавляем в fstab:
-lvcreate --size 4G --name LogVolOpt VolGroup00 "${SYS_PART}"
+lvcreate --size 4G --name LogVolOpt VolGroup00 "${OLD_PART}"
 sleep 1  # ждём обновления информации о томах
 mkfs.btrfs /dev/mapper/VolGroup00-LogVolOpt
 
